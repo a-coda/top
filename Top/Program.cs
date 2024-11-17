@@ -10,23 +10,38 @@ namespace Top
         static void Main(string[] args)
         {
             IObservable<long> times = Observable.Interval(TimeSpan.FromSeconds(5)).StartWith(0);
-            IObservable<IEnumerable<Process>> processes = times.Select(_ => Generate());
-            processes.Subscribe(processes => Display(processes));
-            processes.Wait();
+            times
+                .Select(Generate)
+                .Select(CollectProcessInfo)
+                .Subscribe(Display);
+            times.Wait();
         }
 
-        private static IEnumerable<Process> Generate()
+        private static IEnumerable<Process> Generate(long _)
         {
             return Process.GetProcesses().OrderByDescending(p => Safe(() => p.TotalProcessorTime)).Take(20);
         }
 
-        private static void Display(IEnumerable<Process> processes)
+        private static IEnumerable<ProcessInfo> CollectProcessInfo(IEnumerable<Process> processes)
         {
+            foreach (var p in processes)
+            {
+                yield return new ProcessInfo(
+                    p.Id.ToString(),
+                    p.ProcessName,
+                    Safe(() => p.TotalProcessorTime).ToString(),
+                    p.NonpagedSystemMemorySize64.ToString());
+            }
+        }
+
+        private static void Display(IEnumerable<ProcessInfo> processes)
+        {
+            List<ProcessInfo> processList = processes.ToList();
             Console.Clear();
             Console.WriteLine(cFormat, "ID", "Name", "Time (HH:MM:SS)", "Memory (bytes)");
-            foreach (Process p in processes)
+            foreach (ProcessInfo p in processList)
             {
-                Console.WriteLine(cFormat, p.Id.ToString(), p.ProcessName, Safe(() => p.TotalProcessorTime).ToString(), p.NonpagedSystemMemorySize64.ToString());
+                Console.WriteLine(cFormat, p.Id, p.Name, p.TotalProcessorTime, p.NonpagedSystemMemorySize64);
             }
         }
 
@@ -41,5 +56,7 @@ namespace Top
                 return default(T);
             }
         }
+
+        private record ProcessInfo(string Id, string Name, string TotalProcessorTime, string NonpagedSystemMemorySize64);
     }
 }
