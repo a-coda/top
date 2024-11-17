@@ -6,40 +6,45 @@ namespace Top
     internal class Program
     {
         private const string cFormat = "{0,-8} {1,-40} {2,-20} {3,-10}";
+        private static readonly ProcessInfo HEADER = new ProcessInfo("", "", "", "");
 
         static void Main(string[] args)
         {
             IObservable<long> times = Observable.Interval(TimeSpan.FromSeconds(5)).StartWith(0);
             times
-                .Select(Generate)
-                .Select(CollectProcessInfo)
-                .Subscribe(Display);
+                .Subscribe(Update);
             times.Wait();
         }
 
-        private static IEnumerable<Process> Generate(long _)
+        private static void Update(long _)
         {
-            return Process.GetProcesses().OrderByDescending(p => Safe(() => p.TotalProcessorTime)).Take(20);
+            Process.GetProcesses()
+                .OrderByDescending(p => Safe(() => p.TotalProcessorTime))
+                .Take(20)
+                .Select(ConvertToProcessInfo)
+                .Prepend(HEADER)
+                .ToList()
+                .ForEach(DisplayInfo);
         }
 
-        private static IEnumerable<ProcessInfo> CollectProcessInfo(IEnumerable<Process> processes)
+        private static ProcessInfo ConvertToProcessInfo(Process p)
         {
-            foreach (var p in processes)
-            {
-                yield return new ProcessInfo(
+            return new ProcessInfo(
                     p.Id.ToString(),
                     p.ProcessName,
                     Safe(() => p.TotalProcessorTime).ToString(),
-                    p.NonpagedSystemMemorySize64.ToString());
-            }
+                    p.NonpagedSystemMemorySize64.ToString()
+                    );
         }
 
-        private static void Display(IEnumerable<ProcessInfo> processes)
+        private static void DisplayInfo (ProcessInfo p)
         {
-            List<ProcessInfo> processList = processes.ToList();
-            Console.Clear();
-            Console.WriteLine(cFormat, "ID", "Name", "Time (HH:MM:SS)", "Memory (bytes)");
-            foreach (ProcessInfo p in processList)
+            if (p.Equals(HEADER))
+            {
+                Console.Clear();
+                Console.WriteLine(cFormat, "ID", "Name", "Time (HH:MM:SS)", "Memory (bytes)");
+            }
+            else
             {
                 Console.WriteLine(cFormat, p.Id, p.Name, p.TotalProcessorTime, p.NonpagedSystemMemorySize64);
             }
