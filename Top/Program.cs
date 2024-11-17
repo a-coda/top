@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
 namespace Top
 {
@@ -10,13 +11,28 @@ namespace Top
 
         static void Main(string[] args)
         {
-            IObservable<long> times = Observable.Interval(TimeSpan.FromSeconds(5)).StartWith(0);
-            times
+            IObservable<long> whenTimerGoesOff = Observable.Interval(TimeSpan.FromSeconds(5))
+                .StartWith(0);
+            ISubject<char> whenAnyKeyPressed = new Subject<char>();
+            whenTimerGoesOff
+                .CombineLatest(whenAnyKeyPressed)
                 .Subscribe(Update);
-            times.Wait();
+            whenAnyKeyPressed
+                .OnNext(' ');
+            ListenForKeyPresses(whenAnyKeyPressed);
         }
 
-        private static void Update(long _)
+        private static void ListenForKeyPresses(ISubject<char> whenAnyKeyPressed)
+        {
+            ConsoleKeyInfo key;
+            while (true)
+            {
+                key = Console.ReadKey();
+                whenAnyKeyPressed.OnNext(key.KeyChar);
+            }
+        }
+
+        private static void Update((long, char) _)
         {
             Process.GetProcesses()
                 .OrderByDescending(p => Safe(() => p.TotalProcessorTime))
