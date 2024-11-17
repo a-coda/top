@@ -7,7 +7,7 @@ namespace Top
     internal class Program
     {
         private const string cFormat = "{0,-8} {1,-40} {2,-20} {3,-10}";
-        private static readonly ProcessInfo HEADER = new ProcessInfo("", "", "", "");
+        private static readonly ProcessInfo HEADER = new ("", "", "", "");
 
         static void Main(string[] args)
         {
@@ -35,7 +35,7 @@ namespace Top
         private static void Update((long, char) _)
         {
             Process.GetProcesses()
-                .OrderByDescending(p => Safe(() => p.TotalProcessorTime))
+                .OrderByDescending(p => Safe(() => p.TotalProcessorTime, TimeSpan.Zero))
                 .Take(20)
                 .Select(ConvertToProcessInfo)
                 .Prepend(HEADER)
@@ -48,7 +48,7 @@ namespace Top
             return new ProcessInfo(
                     p.Id.ToString(),
                     p.ProcessName,
-                    Safe(() => p.TotalProcessorTime).ToString(),
+                    Safe(() => p.TotalProcessorTime, TimeSpan.Zero).ToString(),
                     p.NonpagedSystemMemorySize64.ToString()
                     );
         }
@@ -66,7 +66,7 @@ namespace Top
             }
         }
 
-        private static T Safe<T>(Func<T> func)
+        private static T Safe<T>(Func<T> func, T theDefault)
         {
             try
             {
@@ -74,7 +74,7 @@ namespace Top
             }
             catch
             {
-                return default(T);
+                return theDefault;
             }
         }
 
