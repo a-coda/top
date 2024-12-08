@@ -17,7 +17,7 @@ namespace Top
                 .CombineLatest(whenAnyKeyPressed)
                 .Subscribe(Update);
             whenAnyKeyPressed
-                .OnNext(' ');
+                .OnNext('3');
             ListenForKeyPresses(whenAnyKeyPressed);
         }
 
