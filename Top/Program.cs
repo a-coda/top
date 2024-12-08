@@ -7,7 +7,6 @@ namespace Top
     internal class Program
     {
         private const string cFormat = "{0,-8} {1,-40} {2,-20} {3,-10}";
-        private static readonly ProcessInfo HEADER = new ("", "", "", "");
 
         static void Main(string[] args)
         {
@@ -32,16 +31,29 @@ namespace Top
             }
         }
 
-        private static void Update((long, char) _)
+        private static void Update((long, char) eventInfo)
         {
             Process.GetProcesses()
-                .OrderByDescending(p => Safe(() => p.TotalProcessorTime, TimeSpan.Zero))
+                .OrderByDescending(ProcessInfoKey(eventInfo.Item2))
                 .Take(20)
                 .Select(ConvertToProcessInfo)
-                .Prepend(HEADER)
+                .Prepend(ProcessInfo.HEADER)
                 .ToList()
                 .ForEach(DisplayInfo);
         }
+
+        private static Func<Process, object> ProcessInfoKey(char indexSelection)
+        {
+            return indexSelection switch
+            {
+                '1' => p => p.Id,
+                '2' => p => p.ProcessName,
+                '3' => p => Safe(() => p.TotalProcessorTime, TimeSpan.Zero),
+                '4' => p => p.NonpagedSystemMemorySize64,
+                _ => p => p.Id,
+            };
+        }
+
 
         private static ProcessInfo ConvertToProcessInfo(Process p)
         {
@@ -55,15 +67,11 @@ namespace Top
 
         private static void DisplayInfo (ProcessInfo p)
         {
-            if (p.Equals(HEADER))
+            if (p.Equals(ProcessInfo.HEADER))
             {
                 Console.Clear();
-                Console.WriteLine(cFormat, "ID", "Name", "Time (HH:MM:SS)", "Memory (bytes)");
             }
-            else
-            {
-                Console.WriteLine(cFormat, p.Id, p.Name, p.TotalProcessorTime, p.NonpagedSystemMemorySize64);
-            }
+            Console.WriteLine(cFormat, p.Id, p.Name, p.TotalProcessorTime, p.NonpagedSystemMemorySize64);
         }
 
         private static T Safe<T>(Func<T> func, T theDefault)
@@ -78,6 +86,10 @@ namespace Top
             }
         }
 
-        private record ProcessInfo(string Id, string Name, string TotalProcessorTime, string NonpagedSystemMemorySize64);
+        private record ProcessInfo(string Id, string Name, string TotalProcessorTime, string NonpagedSystemMemorySize64)
+        {
+            public static readonly ProcessInfo HEADER = new("ID", "Name", "Time (HH:MM:SS)", "Time (HH:MM:SS)");
+
+        };
     }
 }
